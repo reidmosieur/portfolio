@@ -36,7 +36,7 @@ h4 {
 }
 
 p {
-  font-size: 1.25rem; /* 16px */
+  font-size: 1.25rem; /* 20px */
   line-height: 1.6;
   margin-bottom: 1.2rem; /* Space between paragraphs */
 }
@@ -50,8 +50,7 @@ a:hover {
   text-decoration: underline;
 }
 
-ul li,
-ol li {
+li {
   font-size: 1.25rem; /* Same as body */
   line-height: 1.6;
   margin-bottom: 0.8rem;
@@ -64,17 +63,27 @@ img {
 code {
   color: #f472b6;
   background-color: #1c1917;
-  padding: .25rem 1rem .25rem 1rem;
-  border-radius: .25rem;
+  padding: 0.25rem 1rem 0.25rem 1rem;
+  border-radius: 0.25rem;
 }
 
 .container {
   width: 100%;
-  @media (width >= 40rem) { max-width: 39rem; }
-  @media (width >= 48rem) { max-width: 47rem; }
-  @media (width >= 64rem) { max-width: 63rem; }
-  @media (width >= 80rem) { max-width: 79rem; }
-  @media (width >= 96rem) { max-width: 65rem; }
+  @media (width >= 40rem) {
+    max-width: 39rem;
+  }
+  @media (width >= 48rem) {
+    max-width: 47rem;
+  }
+  @media (width >= 64rem) {
+    max-width: 63rem;
+  }
+  @media (width >= 80rem) {
+    max-width: 79rem;
+  }
+  @media (width >= 96rem) {
+    max-width: 65rem;
+  }
 }
 
 /* Responsive Font Sizes */
