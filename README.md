@@ -14,11 +14,11 @@ I'm a full-stack software developer with a strong background in building scalabl
 
 ## 🛠️ Tech Stack
 
-**Frontend**: HTML, CSS, JavaScript, TypeScript, React, Next.js, Remix, Angular
-**Backend**: Node.js, Express, Python, Rust
-**Databases**: PostgreSQL, MongoDB, SQL
-**DevOps & Cloud**: AWS (EC2, RDS), Git, CI/CD
-**Other**: API Integration, Shopify, Technical SEO, E-commerce
+- **Frontend**: HTML, CSS, JavaScript, TypeScript, React, Next.js, Remix, Angular
+- **Backend**: Node.js, Express, Python, Rust
+- **Databases**: PostgreSQL, MongoDB, SQL
+- **DevOps & Cloud**: AWS (EC2, RDS), Git, CI/CD
+- **Other**: API Integration, Shopify, Technical SEO, E-commerce
 
 ---
 
