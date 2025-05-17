@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reid's SaaS Starter</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header style="border-bottom: 1px solid white;">
+        <nav>
+            <ul style="margin-top: .25rem; margin-bottom: .25rem; list-style: none; display: flex; gap: 1.5rem">
+                <li>
+                    <a href="/">Home</a>
+                </li>
+                <li>
+                    <a href="/saas-starter.html">SaaS Starter</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <main class="container" style="padding: 1rem 2rem 1rem 2rem;">
+      <article style="max-width: 64rem">
+        <img
+          src="/media/saas-starter-architecture/auth-flow.png"
+          alt="The entire authentication flow for my SaaS starter"
+        />
+        <h1 id="introduction">SaaS Starter</h1>
+        <a href="https://github.com/reidmosieur/saas-starter">Github Repo</a>
+        <p>
+          A lightweight SaaS starter that shows how I’d architect a multi-tenant app with organizational structure. Fully functional but intentionally unpolished—meant to be cloned, tested, and extended.
+        </p>
+        <p>
+          It includes authentication, post-signup user management, RBAC org setup, and billing logic. While designed for multi-tenant SaaS, the auth flow works for most apps.
+        </p>
+        <h2>Architecture</h2>
+        <ul>
+            <li><strong>Frontend/Backend:</strong> Next.js</li>
+            <li><strong>Database:</strong> Postgres with Prisma</li>
+            <li><strong>Components:</strong> Shadcn</li>
+            <li><strong>Styling:</strong> Tailwind</li>
+            <li><strong>Services:</strong>
+                <ul>
+                    <li><strong>Stripe:</strong> Billing</li>
+                    <li><strong>Google:</strong> For SSO</li>
+                    <li><strong>IPinfo:</strong> For extended IP information to add to sessions</li>
+                </ul>
+            </li>
+        </ul>
+        <img src="/media/saas-starter-architecture/data-models.png" />
+        <h2>Models</h2>
+        <p>Whenever possible, I use dates instead of booleans for state. “Email verified on Jan 6” beats a <code>true/false</code> toggle for both clarity and UX.</p>
+        <ul>
+            <li><strong>User:</strong> Basic info + status + auth/security fields</li>
+            <li><strong>Onboarding:</strong> Recursive wizard-style form</li>
+            <li><strong>Session:</strong> Standard plus IPinfo-enriched data</li>
+            <li><strong>Address:</strong> Overkill for most apps, but useful for SEO and localized flows</li>
+        </ul>
+        <img src="/media/saas-starter-architecture/never-roll-auth.png" />
+        <h2 id="authentication">Authentication</h2>
+        <p>
+          Some say never build auth from scratch. I disagree. Auth just means verifying identity—and done well, it’s simple, secure, and customizable.
+        </p>
+        <p>
+          At its core:
+        </p>
+        <ul>
+            <li>Collect an email + password</li>
+            <li>Verify ownership (OTP or magic link)</li>
+            <li>Store credentials securely</li>
+            <li>Handle session and device tracking</li>
+        </ul>
+        <p>From there, you can layer on passkeys, phone sign-in, OAuth, etc.—but you’re still playing by the same basic rules.</p>
+        <h3 id="sign-up">Sign Up</h3>
+        <p>There are 3 sign-up methods:</p>
+        <ul>
+          <li>Email+password</li>
+          <li>SSO (Google)</li>
+          <li>Organization Invitation</li>
+        </ul>
+        <p>
+          Users can later add a second method. The first two are for org owners and include onboarding. Invitations are for team members—email+password only, no OTP needed.
+        </p>
+        <img src="/media/saas-starter-architecture/email-signup.png" />
+        <h4>Email+password</h4>
+        <p>
+          Start with just the email. Confirm it via OTP, then collect the password during onboarding. Cleaner UX and better separation of steps.
+        </p>
+        <p>
+          Yes, this opens the door to enumeration attacks. A generic “Something went wrong” message protects user data, even if it slightly dents UX.
+        </p>
+        <img src="/media/saas-starter-architecture/sso.png" />
+        <h4>SSO</h4>
+        <p>
+          The heavy lifting happens on Google’s end. We just:
+        </p>
+        <ul>
+            <li>Check if the user exists</li>
+            <li>If connected → create session</li>
+            <li>If not → confirm intent and connect</li>
+        </ul>
+        <img src="/media/saas-starter-architecture/user-invitation.png" />
+        <h4>Organization Invitation</h4>
+        <p>
+          Like standard email+password, but initiated by an org owner. We skip OTP—email link = instant verification + onboarding redirect.
+        </p>
+        <img src="/media/saas-starter-architecture/otp.png" />
+        <h3 id="account-verification">Account Verification</h3>
+        <p>
+          OTP is just another form of password verification. You hash the code and compare it to the input. Simple.
+        </p>
+        <p>
+          For smoother UX:
+        </p>
+        <ul>
+            <li>Send a link to auto-verify where possible</li>
+            <li>Limit attempts, notify on failures</li>
+            <li>Redirect based on flow: sign-up → onboarding, forgot password → reset</li>
+        </ul>
+        <h3 id="user-creation">User Creation</h3>
+        <img src="/media/saas-starter-architecture/create-the-user.png" />
+        <p>
+          At it's most simple, your user is going to just be an email. At this
+          point, you might have more information than that, such as from an SSO,
+          but your user model needs to be flexible enough to subsist on an email
+          alone in the signup.
+        </p>
+        <img src="/media/saas-starter-architecture/sessions.png" />
+        <h3 id="sessions">Sessions</h3>
+        <p>
+          Sessions are simple, but critical. A cookie connects user to device. Store minimal info, invalidate regularly. That’s most of it.
+        </p>
+        <p>
+          Where sessions shine is how you use them—tracking access, managing devices, enabling persistent login without compromising security.
+        </p>
+        <img src="/media/saas-starter-architecture/onboarding-wizard.png" />
+        <h3 id="onboarding">Onboarding</h3>
+        <p>
+          Onboarding isn't technically auth—but it’s the best time to gather info.
+        </p>
+        <p>
+          Built as a recursive flow, so it’s:
+        </p>
+        <ul>
+          <li>Familiar</li>
+          <li>Extensible</li>
+          <li>Asynchronous</li>
+        </ul>
+        <p>
+          This lets you update onboarding any time (e.g., new compliance needs), and users complete only what’s missing.
+        </p>
+        <img src="/media/saas-starter-architecture/email-password-login.png" />
+        <h3 id="email-login">Email Login</h3>
+        <p>
+          Classic email+password login—two fields, one comparison. If it matches, start a session.
+        </p>
+        <p>
+          Again, avoid exposing whether an email exists. Vague errors protect your users. Lock out or alert after multiple failed attempts.
+        </p>
+        <img src="/media/saas-starter-architecture/forgot-password.png" />
+        <h3 id="forgot-password">Forgot Password</h3>
+        <p>
+          Same idea: collect email, send OTP, validate, reset password.
+        </p>
+        <p>
+          Security-wise, it follows the same principles. Don’t confirm if the user exists in your response. Push clarity inside the app, not through the endpoint.
+        </p>
+        <img src="/media/saas-starter-architecture/logout.png" />
+        <h3 id="logout">Logout</h3>
+        <p>
+          Logout = session kill. Label the reason, cleanly expire it, and redirect. Handles most cases of unauthenticated access.
+        </p>
+        <img
+          src="/media/saas-starter-architecture/user-vistits-protected-route.png"
+        />
+        <h3 id="user-accesses-a-protected-route">
+          User Accesses A Protected Route
+        </h3>
+        <p>
+          If a user hits a protected route without a session, they likely know the app. Redirect them to log in and preserve their flow where possible.
+        </p>
+        <img src="/media/saas-starter-architecture/user-authenticated.png" />
+        <h3 id="user-can-access-the-app">User Can Access The App</h3>
+        <p>
+          Once signed up and onboarded, users are fully authenticated and dropped into the app.
+        </p>
+        <h3 id="billing">Billing</h3>
+        <p>
+          Billing isn’t included in the base repo so you can test it locally without Stripe keys or sandboxing. The starter assumes paid access only—no freemium or trial logic.
+        </p>
+        <p>
+          To add billing:
+        </p>
+        <ul>
+            <li>Collect plan + payment during onboarding</li>
+            <li>Send to Stripe</li>
+            <li>Store on the organization model</li>
+            <li>On each load, check subscription validity before granting access</li>
+        </ul>
+        <p>If the sub lapses, let the session stand but gate access. Redirect them to update payment before re-entering.</p>
+      </article>
+    </main>
+  </body>
+</html>

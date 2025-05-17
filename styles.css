@@ -36,14 +36,14 @@ h4 {
 }
 
 p {
-  font-size: 1rem; /* 16px */
+  font-size: 1.25rem; /* 16px */
   line-height: 1.6;
   margin-bottom: 1.2rem; /* Space between paragraphs */
 }
 
 a {
   color: #84cc16;
-  font-size: 1rem; /* Same as body */
+  font-size: 1.25rem; /* Same as body */
 }
 
 a:hover {
@@ -52,9 +52,29 @@ a:hover {
 
 ul li,
 ol li {
-  font-size: 1rem; /* Same as body */
+  font-size: 1.25rem; /* Same as body */
   line-height: 1.6;
   margin-bottom: 0.8rem;
+}
+
+img {
+  max-width: 100%;
+}
+
+code {
+  color: #f472b6;
+  background-color: #1c1917;
+  padding: .25rem 1rem .25rem 1rem;
+  border-radius: .25rem;
+}
+
+.container {
+  width: 100%;
+  @media (width >= 40rem) { max-width: 39rem; }
+  @media (width >= 48rem) { max-width: 47rem; }
+  @media (width >= 64rem) { max-width: 63rem; }
+  @media (width >= 80rem) { max-width: 79rem; }
+  @media (width >= 96rem) { max-width: 65rem; }
 }
 
 /* Responsive Font Sizes */
@@ -82,7 +102,7 @@ ol li {
   p,
   ul li,
   ol li {
-    font-size: 0.95rem; /* Slightly smaller for readability on small screens */
+    font-size: 1rem; /* Slightly smaller for readability on small screens */
   }
 }
 
