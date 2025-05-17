@@ -11,8 +11,20 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <header style="border-bottom: 1px solid white;">
+        <nav>
+            <ul style="margin-top: .25rem; margin-bottom: .25rem; list-style: none; display: flex; gap: 1.5rem">
+                <li>
+                    <a href="/">Home</a>
+                </li>
+                <li>
+                    <a href="/saas-starter.html">SaaS Starter</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
     <main>
-      <div style="max-width: 65ch">
+      <div class="container">
         <section>
           <h1>Reid Mosieur | Full-Stack Developer</h1>
           <p>I build fast, scalable web apps focused on business results.</p>
@@ -24,8 +36,26 @@
           </div>
         </section>
         <section>
-          <h2>Featured Project</h2>
+          <h2>Featured Projects</h2>
           <ul>
+            <li>
+              A <a href="/saas-starter.html">no-frills SaaS starter</a> kit that shows how I’d architect a production-ready, multi-tenant app with organizations, auth, and billing. It’s minimal, but functional—clone it, test it, break it.
+              <br />
+              <br />
+              <strong>What's included:</strong>
+              <ul>
+                <li>Auth with email/password + Google SSO</li>
+                <li>Org-based RBAC with invites</li>
+                <li>Custom onboarding flows</li>
+                <li>Session handling (with IP enrichment)</li>
+                <li>Billing-ready (Stripe)</li>
+                <li>Built with Next.js, Tailwind, Prisma, and Shadcn</li>
+              </ul>
+              I’ve leaned into practical design choices—dates instead of booleans, recursive onboarding, and a simple auth strategy that doesn’t rely on third-party abstractions. Auth isn’t magic, and you don’t need to overcomplicate it.
+              <br />
+              <br />
+              This starter focuses on flexibility, clarity, and scale. It’s not polished, but it’s battle-ready.
+            </li>
             <li>
               <a href="https://shop.warehousewireless.com">Warehouse Wireless</a
               >— SEO-driven e-commerce platform. Increased traffic by 25% using
