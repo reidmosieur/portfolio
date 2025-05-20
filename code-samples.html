@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reid Mosieur Code Samples</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link href="/styles/prism.css" rel="stylesheet" />
+    <script>
+      // When the user clicks on the button, scroll to the top of the document
+      function topFunction() {
+        document.body.scrollTop = 0; // For Safari
+        document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+      }
+    </script>
+  </head>
+  <body>
+    <header style="border-bottom: 1px solid white">
+      <nav>
+        <ul
+          style="
+            margin-top: 0.25rem;
+            margin-bottom: 0.25rem;
+            list-style: none;
+            display: flex;
+            gap: 1.5rem;
+          "
+        >
+          <li>
+            <a href="/">Home</a>
+          </li>
+          <li>
+            <a href="/saas-starter.html">SaaS Starter</a>
+          </li>
+          <li>
+            <a href="/code-samples.html">Code Samples</a>
+          </li>
+        </ul>
+      </nav>
+    </header>
+    <main style="position: relative">
+      <h1>Reid Mosieur Code Samples</h1>
+      <ul>
+        <li>
+          <a href="#frontend">Front End</a>
+        </li>
+        <li>
+          <a href="#backend">Back End</a>
+        </li>
+        <li>
+          <a href="#database">Database</a>
+        </li>
+      </ul>
+      <section id="frontend">
+        <h2>Front End</h2>
+        <a href="https://frontend.reidmosieur.dev">Preview</a>
+        <pre>
+          <code class="language-typescript">
+"use client";
+
+import &#123;
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+&#125; from "@/components/ui/card";
+import &#123;
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+&#125; from "@/components/ui/table";
+// using static data for simplicity
+import logsData from "@/data/logs.json";
+import &#123; cn &#125; from "@/lib/utils";
+import &#123; ArrowUpDown, Filter, SortAsc, X &#125; from "lucide-react";
+import &#123; usePathname, useRouter, useSearchParams &#125; from "next/navigation";
+import &#123;
+  createContext,
+  Dispatch,
+  Fragment,
+  ReactNode,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+&#125; from "react";
+import &#123;
+  ComboboxContent,
+  ComboboxProvider,
+  ComboboxRoot,
+  ComboboxTrigger,
+&#125; from "./combobox";
+import &#123; Label &#125; from "./ui/label";
+import &#123;
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+&#125; from "./ui/select";
+import &#123; Skeleton &#125; from "./ui/skeleton";
+import &#123;
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+&#125; from "@/components/ui/pagination";
+import &#123; toast &#125; from "sonner";
+import &#123; Separator &#125; from "./ui/separator";
+
+type Logs = typeof logsData | null;
+type Log = NonNullable&lt;Logs&gt;[number];
+type LogKeys = keyof Log;
+const DATA_STATES = ["success", "empty", "loading", "error"] as const;
+type DataState = (typeof DATA_STATES)[number];
+
+interface LogsContext &#123;
+  // data
+  logs: Logs;
+  setLogs: Dispatch&lt;SetStateAction&lt;Logs&gt;&gt;;
+
+  // state
+  fetchingLogs: boolean;
+  setFetchingLogs: Dispatch&lt;SetStateAction&lt;boolean&gt;&gt;;
+  dataState: DataState;
+
+  // filters
+  userFilter: string | null;
+  actionFilter: string | null;
+  sortQuery: string | null;
+
+  // pagination
+  pages: number;
+  page: number;
+  itemsPerPage: number;
+
+  // constants that should be provided
+  // in context
+  uniqueActions: Array&lt;string&gt;;
+  uniqueUsers: Array&lt;string&gt;;
+
+  // helpers that need to be defined in a component
+  // because of hooks
+  addSearchParam: (name: string, value: string) =&gt; void;
+  removeSearchParam: (names: Array&lt;string&gt;) =&gt; void;
+&#125;
+
+const LogsContext = createContext&lt;LogsContext&gt;(&#123;
+  logs: null,
+  setLogs: () =&gt; &#123;&#125;,
+  fetchingLogs: true,
+  setFetchingLogs: () =&gt; &#123;&#125;,
+  uniqueActions: [],
+  uniqueUsers: [],
+  userFilter: null,
+  actionFilter: null,
+  sortQuery: null,
+  dataState: "success" as DataState,
+  pages: 0,
+  page: 0,
+  itemsPerPage: 0,
+  addSearchParam: () =&gt; &#123;&#125;,
+  removeSearchParam: () =&gt; &#123;&#125;,
+&#125;);
+
+// helper function to determine the current sort since it's
+// stored in a single searchParam, like this: timestamp:asc
+function getSort(sort: string | null) &#123;
+  if (!sort) return null;
+
+  const [currentSortKey, currentSortValue] = sort.split(":");
+
+  return &#123; currentSortKey, currentSortValue &#125;;
+&#125;
+
+function LogsContextProvider(&#123; children &#125;: &#123; children?: ReactNode &#125;) &#123;
+  // hook into required data
+  const [logs, setLogs] = useState&lt;Logs&gt;(null);
+  const [fetchingLogs, setFetchingLogs] = useState(true);
+  const [pages, setPages] = useState(0);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // determine how the data should be served to avoid unnecessary work
+  const dataStateQuery = searchParams.get("data-state");
+  const dataState = (
+    dataStateQuery && DATA_STATES.includes(dataStateQuery as DataState)
+      ? dataStateQuery
+      : "success"
+  ) as DataState;
+
+  // these variables get used regardless of data state, for simplicity
+  // filter search params
+  const userFilter = searchParams.get("user");
+  const actionFilter = searchParams.get("action");
+
+  // sort search param
+  const sortQuery = searchParams.get("sort");
+
+  // pagination search params
+  const itemsPerPage = Number(searchParams.get("items") ?? 10); // hard coded just to use as a default
+  const page = Number(searchParams.get("page") ?? 1);
+
+  const simulateSuccessfulFetch = () =&gt; &#123;
+    // filter the static logsData by requested filters
+    const filteredData = logsData.filter((&#123; user, action &#125;) =&gt; &#123;
+      const userEqual = user === userFilter;
+      const actionEqual = action === actionFilter;
+
+      // using a switch for readability
+      switch (true) &#123;
+        case !!userFilter && !!actionFilter:
+          return userEqual && actionEqual;
+
+        case !!userFilter:
+          return userEqual;
+
+        case !!actionFilter:
+          return actionEqual;
+
+        case !userFilter && !actionFilter:
+          return true;
+
+        default:
+          console.error("Unhandled filter state", &#123;
+            userFilter,
+            actionFilter,
+          &#125;);
+          return true;
+      &#125;
+    &#125;);
+
+    // pagination consts
+    // handled here to access filtered data
+    const logsLength = filteredData?.length ?? 0;
+    const pages = Math.ceil(logsLength / itemsPerPage);
+    setPages(pages);
+
+    // sort the filtered data to avoid sorting unnecessary data
+    const sort = getSort(sortQuery);
+    const currentSortKey = sort?.currentSortKey as unknown as
+      | LogKeys
+      | undefined;
+    const currentSortValue = sort?.currentSortValue;
+
+    // this could be improved with using `localCompare` for strings
+    // instead of just `&lt;` but it get's the point across for something
+    // this simple
+    function compareItemsByCurrentSortKeyValue(a: Log, b: Log) &#123;
+      // return early to avoid unnecessary sorting
+      if (!currentSortKey) &#123;
+        return 0;
+      &#125;
+
+      // access the current sort keys value
+      const valueA = a[currentSortKey];
+      const valueB = b[currentSortKey];
+
+      const aBeforeB = valueA &lt; valueB;
+
+      // check for equality to return early
+      return valueA === valueB
+        ? 0
+        : // if the current sort is ascending, a should
+        // come before b
+        currentSortValue === "asc" && aBeforeB
+        ? -1
+        : // if current sort is descending, a should
+        // come after b
+        currentSortValue === "desc" && !aBeforeB
+        ? -1
+        : // default to 0 to return an unsorted list
+          0;
+    &#125;
+
+    // we're fine mutating the original array here since this isn't production
+    // data, which would be sorted in the request not the frontend.
+    const sortedData = filteredData.sort(compareItemsByCurrentSortKeyValue);
+
+    // paginate the data once's filtered and sorted
+    // likwise, to avoid paginating unnecessarily
+
+    const paginatedData = sortedData.slice(
+      (page - 1) * itemsPerPage,
+      page * itemsPerPage
+    );
+    setLogs(paginatedData);
+    setFetchingLogs(false);
+  &#125;;
+
+  const clearState = () =&gt; &#123;
+    setLogs(null);
+    setPages(0);
+  &#125;;
+
+  // refresh the logs when deps change
+  useEffect(() =&gt; &#123;
+    setTimeout(() =&gt; &#123;
+      switch (dataState) &#123;
+        case "success":
+          simulateSuccessfulFetch();
+          break;
+
+        // need to handle empty different than clearState
+        case "empty":
+          setLogs([]);
+          setPages(0);
+          setFetchingLogs(false);
+          break;
+
+        case "loading":
+          clearState();
+          break;
+
+        case "error":
+          clearState();
+          setFetchingLogs(false);
+          break;
+      &#125;
+    &#125;, 500); // hard coded just to simulate network latency
+    // adding sortedData as a dep causes an infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  &#125;, [sortQuery, userFilter, actionFilter, dataState, page, itemsPerPage]);
+
+  // Get a new searchParams string by merging the current
+  // searchParams with a provided key/value pair.
+  // differs from removal because, for the most part, you
+  // should not need to add a list of params, only remove.
+  // this and `removeQueryStrings` would benefit from improved
+  // types in a production environment
+  const createQueryString = useCallback(
+    (name: string, value: string) =&gt; &#123;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set(name, value);
+
+      return params.toString();
+    &#125;,
+    [searchParams]
+  );
+
+  // remove a list of query strings
+  const removeQueryStrings = useCallback(
+    (names: Array&lt;string&gt;) =&gt; &#123;
+      const params = new URLSearchParams(searchParams.toString());
+
+      names.map((name) =&gt; params.delete(name));
+
+      return params.toString();
+    &#125;,
+    [searchParams]
+  );
+
+  const addSearchParam = (name: string, value: string) =&gt; &#123;
+    router.push(pathname + "?" + createQueryString(name, value));
+  &#125;;
+
+  const removeSearchParam = (names: Array&lt;string&gt;) =&gt; &#123;
+    router.push(pathname + "?" + removeQueryStrings(names));
+  &#125;;
+
+  // create array of unique users
+  // this could be constructed anywhere with static data (like this)
+  // but establishing it in context mirrors a practical application
+  const uniqueUsers = Array.from(new Set(logsData.map((&#123; user &#125;) =&gt; user)));
+
+  // create array of unique actions
+  // for the same reason as the uniqueUsers array
+  const uniqueActions = Array.from(
+    new Set(logsData.map((&#123; action &#125;) =&gt; action))
+  );
+
+  return (
+    &lt;LogsContext
+      value=&#123;&#123;
+        logs,
+        setLogs,
+        fetchingLogs,
+        setFetchingLogs,
+        uniqueActions,
+        uniqueUsers,
+        userFilter,
+        actionFilter,
+        sortQuery,
+        dataState,
+        pages,
+        page,
+        itemsPerPage,
+        addSearchParam,
+        removeSearchParam,
+      &#125;&#125;
+    &gt;
+      &#123;children&#125;
+    &lt;/LogsContext&gt;
+  );
+&#125;
+
+// ensure LogsContext is only used in a provider
+export function useLogsContext() &#123;
+  const context = useContext(LogsContext);
+
+  if (context === null)
+    throw new Error("useLogsContext must be used within a LogsContextProvider");
+
+  return context;
+&#125;
+
+function ActionHead(&#123;
+  label,
+  actions,
+&#125;: &#123;
+  label: ReactNode;
+  actions: ReactNode;
+&#125;) &#123;
+  return (
+    &lt;TableHead&gt;
+      &lt;div className="flex gap-4 justify-between"&gt;
+        &#123;label&#125;
+        &lt;div className="flex gap-2 justify-between"&gt;&#123;actions&#125;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/TableHead&gt;
+  );
+&#125;
+
+function LogsTable() &#123;
+  const &#123; logs, fetchingLogs, dataState, itemsPerPage &#125; = useLogsContext();
+
+  // header stays the same despite state for UX
+  const Header = () =&gt; (
+    &lt;TableHeader&gt;
+      &lt;TableRow&gt;
+        &lt;ActionHead
+          label="Timestamp"
+          actions=&#123;&lt;SortButton sortKey="timestamp" /&gt;&#125;
+        /&gt;
+        &lt;ActionHead
+          label="User"
+          actions=&#123;
+            &lt;Fragment&gt;
+              &lt;UserFilterCombobox /&gt;
+              &lt;SortButton sortKey="user" /&gt;
+            &lt;/Fragment&gt;
+          &#125;
+        /&gt;
+        &lt;ActionHead
+          label="Action"
+          actions=&#123;
+            &lt;Fragment&gt;
+              &lt;ActionFilterCombobox /&gt;
+              &lt;SortButton sortKey="action" /&gt;
+            &lt;/Fragment&gt;
+          &#125;
+        /&gt;
+        &lt;ActionHead
+          label="Resource"
+          actions=&#123;
+            &lt;Fragment&gt;
+              &lt;SortButton sortKey="resource" /&gt;
+            &lt;/Fragment&gt;
+          &#125;
+        /&gt;
+      &lt;/TableRow&gt;
+    &lt;/TableHeader&gt;
+  );
+
+  // construct body based
+  const LogsBody = () =&gt; (
+    &lt;Fragment&gt;
+      &#123;logs?.map((&#123; timestamp, user, action, resource &#125;) =&gt; (
+        &lt;TableRow key=&#123;timestamp&#125;&gt;
+          &lt;TableCell&gt;&#123;new Date(timestamp).toLocaleString()&#125;&lt;/TableCell&gt;
+          &lt;TableCell&gt;&#123;user&#125;&lt;/TableCell&gt;
+          &lt;TableCell&gt;&#123;action&#125;&lt;/TableCell&gt;
+          &lt;TableCell&gt;&#123;resource&#125;&lt;/TableCell&gt;
+        &lt;/TableRow&gt;
+      ))&#125;
+    &lt;/Fragment&gt;
+  );
+  const LoadingBody = () =&gt; (
+    &lt;Fragment&gt;
+      &#123;Array.from(&#123; length: itemsPerPage &#125;).map((_, rowIndex) =&gt; (
+        &lt;TableRow key=&#123;`row-$&#123;rowIndex&#125;`&#125;&gt;
+          &#123;Array.from(&#123; length: 4 &#125;).map((_, cellIndex) =&gt; (
+            &lt;TableCell key=&#123;`row-$&#123;rowIndex&#125;-cell-$&#123;cellIndex&#125;`&#125;&gt;
+              &lt;Skeleton className="w-full h-6" /&gt;
+            &lt;/TableCell&gt;
+          ))&#125;
+        &lt;/TableRow&gt;
+      ))&#125;
+    &lt;/Fragment&gt;
+  );
+  const EmptyBody = () =&gt; (
+    &lt;TableRow&gt;
+      &lt;TableCell colSpan=&#123;4&#125;&gt;
+        No records found. Please, try changing your filters.
+      &lt;/TableCell&gt;
+    &lt;/TableRow&gt;
+  );
+  const ErrorBody = () =&gt; (
+    &lt;TableRow&gt;
+      &lt;TableCell colSpan=&#123;4&#125;&gt;There was an error. Please, try again.&lt;/TableCell&gt;
+    &lt;/TableRow&gt;
+  );
+
+  // default to empty body
+  let Body = EmptyBody;
+
+  if (fetchingLogs || dataState === "loading") &#123;
+    Body = LoadingBody;
+  &#125; else &#123;
+    switch (dataState) &#123;
+      case "success":
+        Body = LogsBody;
+        break;
+      case "error":
+        Body = ErrorBody;
+        break;
+      // no need for "empty" or default since it's already set to EmptyBody
+    &#125;
+  &#125;
+
+  return (
+    &lt;Table className="grow h-full"&gt;
+      &lt;Header /&gt;
+      &lt;TableBody&gt;
+        &lt;Body /&gt;
+      &lt;/TableBody&gt;
+    &lt;/Table&gt;
+  );
+&#125;
+
+function FiltersChips() &#123;
+  const &#123; sortQuery, userFilter, actionFilter, removeSearchParam &#125; =
+    useLogsContext();
+
+  const FilterChip = (&#123;
+    children,
+    className,
+    ...props
+  &#125;: React.ComponentProps&lt;"button"&gt;) =&gt; (
+    &lt;button
+      &#123;...props&#125;
+      className=&#123;cn(
+        "text-sm bg-primary text-primary-foreground rounded-full px-3.5 inline-flex gap-3.5 items-center capitalize",
+        className
+      )&#125;
+    &gt;
+      &#123;children&#125;
+      &lt;X className="size-3.5" /&gt;
+    &lt;/button&gt;
+  );
+
+  // functions to remove sort and filters
+  const removeSort = () =&gt; removeSearchParam(["sort"]);
+  const removeUser = () =&gt; removeSearchParam(["user"]);
+  const removeAction = () =&gt; removeSearchParam(["action"]);
+  // removing them one at a time rerenders and breaks the function
+  const removeAll = () =&gt; removeSearchParam(["sort", "user", "action"]);
+
+  const SortChip = () =&gt; &#123;
+    const descriptionString = sortQuery!.split(":").join(" ");
+
+    return (
+      &lt;FilterChip onClick=&#123;removeSort&#125;&gt;Sort: &#123;descriptionString&#125;&lt;/FilterChip&gt;
+    );
+  &#125;;
+
+  const UserChip = () =&gt; &#123;
+    return &lt;FilterChip onClick=&#123;removeUser&#125;&gt;User: &#123;userFilter&#125;&lt;/FilterChip&gt;;
+  &#125;;
+
+  const ActionChip = () =&gt; &#123;
+    return (
+      &lt;FilterChip onClick=&#123;removeAction&#125;&gt;Action: &#123;actionFilter&#125;&lt;/FilterChip&gt;
+    );
+  &#125;;
+
+  const RemoveAllChip = () =&gt; &#123;
+    return &lt;FilterChip onClick=&#123;removeAll&#125;&gt;Remove All&lt;/FilterChip&gt;;
+  &#125;;
+
+  return (
+    &lt;div className="grid gap-1.5"&gt;
+      &lt;Label&gt;Filters&lt;/Label&gt;
+      &lt;div className="flex gap-2"&gt;
+        &#123;sortQuery ? &lt;SortChip /&gt; : null&#125;
+        &#123;userFilter ? &lt;UserChip /&gt; : null&#125;
+        &#123;actionFilter ? &lt;ActionChip /&gt; : null&#125;
+        &#123;sortQuery || userFilter || actionFilter ? &lt;RemoveAllChip /&gt; : null&#125;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+&#125;
+
+// select to simulate the different types of table state
+function DataStateSelect() &#123;
+  const &#123; addSearchParam, dataState, setFetchingLogs &#125; = useLogsContext();
+
+  const onValueChange = (value: string) =&gt; &#123;
+    setFetchingLogs(true);
+    addSearchParam("data-state", value);
+
+    switch (value) &#123;
+      case "success":
+        toast.success("Success", &#123;
+          description: "Simulating a successful fetch",
+        &#125;);
+        break;
+
+      case "empty":
+        toast.warning("Hmm", &#123;
+          description: "Simulating an empty fetch",
+        &#125;);
+        break;
+
+      case "loading":
+        toast.message("Just a sec...", &#123;
+          description: "Simulating a loading fetch",
+        &#125;);
+        break;
+
+      case "error":
+        toast.error("Uh-oh", &#123;
+          description: "Simulating an errored fetch",
+        &#125;);
+        break;
+
+      default:
+        toast.message("There was an unhandled data type", &#123;
+          description: "Did you just override my form? Cheeky",
+        &#125;);
+    &#125;
+  &#125;;
+
+  return (
+    &lt;div className="grid gap-1.5"&gt;
+      &lt;Label htmlFor="data-state"&gt;Data State&lt;/Label&gt;
+      &lt;Select value=&#123;dataState&#125; onValueChange=&#123;onValueChange&#125;&gt;
+        &lt;SelectTrigger className="w-48 capitalize"&gt;
+          &lt;SelectValue id="data-state" /&gt;
+        &lt;/SelectTrigger&gt;
+        &lt;SelectContent&gt;
+          &#123;DATA_STATES.map((value) =&gt; (
+            &lt;SelectItem key=&#123;value&#125; value=&#123;value&#125; className="capitalize"&gt;
+              &#123;value&#125;
+            &lt;/SelectItem&gt;
+          ))&#125;
+        &lt;/SelectContent&gt;
+      &lt;/Select&gt;
+    &lt;/div&gt;
+  );
+&#125;
+
+// applies user filters to the search params
+function UserFilterCombobox() &#123;
+  const &#123; uniqueUsers, userFilter, addSearchParam, removeSearchParam &#125; =
+    useLogsContext();
+  const userOptions = uniqueUsers?.map((user) =&gt; (&#123;
+    label: user,
+    value: user,
+  &#125;));
+
+  const onValueChange = (newValue: string) =&gt;
+    newValue === userFilter
+      ? removeSearchParam(["user"])
+      : addSearchParam("user", newValue);
+
+  return (
+    &lt;ComboboxProvider
+      options=&#123;userOptions&#125;
+      value=&#123;userFilter&#125;
+      setValue=&#123;onValueChange&#125;
+    &gt;
+      &lt;ComboboxRoot&gt;
+        &lt;ComboboxTrigger asChild&gt;
+          &lt;button&gt;
+            &lt;Filter className="size-4" /&gt;
+          &lt;/button&gt;
+        &lt;/ComboboxTrigger&gt;
+        &lt;ComboboxContent /&gt;
+      &lt;/ComboboxRoot&gt;
+    &lt;/ComboboxProvider&gt;
+  );
+&#125;
+
+// applies action filters to the search params
+function ActionFilterCombobox() &#123;
+  const &#123; uniqueActions, actionFilter, addSearchParam, removeSearchParam &#125; =
+    useLogsContext();
+  const userOptions = uniqueActions?.map((action) =&gt; (&#123;
+    label: action,
+    value: action,
+  &#125;));
+
+  const onValueChange = (newValue: string) =&gt;
+    newValue === actionFilter
+      ? removeSearchParam(["action"])
+      : addSearchParam("action", newValue);
+
+  return (
+    &lt;ComboboxProvider
+      options=&#123;userOptions&#125;
+      value=&#123;actionFilter&#125;
+      setValue=&#123;onValueChange&#125;
+    &gt;
+      &lt;ComboboxRoot&gt;
+        &lt;ComboboxTrigger asChild&gt;
+          &lt;button&gt;
+            &lt;Filter className="size-4" /&gt;
+          &lt;/button&gt;
+        &lt;/ComboboxTrigger&gt;
+        &lt;ComboboxContent /&gt;
+      &lt;/ComboboxRoot&gt;
+    &lt;/ComboboxProvider&gt;
+  );
+&#125;
+
+// applies sort to the search params
+function SortButton(&#123; sortKey &#125;: &#123; sortKey: string &#125;) &#123;
+  const &#123; sortQuery, addSearchParam &#125; = useLogsContext();
+  const sort = getSort(sortQuery);
+
+  const currentSortKey = sort?.currentSortKey;
+  const currentSortValue = sort?.currentSortValue;
+  const currentlySorted = currentSortKey === sortKey ? currentSortValue : null;
+
+  const SortIcon = currentlySorted ? SortAsc : ArrowUpDown;
+
+  // construct new sort value based on current sort value
+  // defaults to "asc"
+  const onClick = () =&gt; &#123;
+    const newSortValue = !currentlySorted
+      ? "asc"
+      : currentSortValue === "asc"
+      ? "desc"
+      : currentSortValue === "desc"
+      ? "asc"
+      : "asc";
+    const newSort = `$&#123;sortKey&#125;:$&#123;newSortValue&#125;`;
+
+    addSearchParam("sort", newSort);
+  &#125;;
+
+  return (
+    &lt;button onClick=&#123;onClick&#125;&gt;
+      &lt;SortIcon
+        className=&#123;cn(
+          "size-4 ease-in-out",
+          currentlySorted === "desc"
+            ? "transition-transform transform rotate-180"
+            : "transition-transform transform"
+        )&#125;
+      /&gt;
+    &lt;/button&gt;
+  );
+&#125;
+
+// a simple helper that takes the current and last pages to construct
+// pagination with ellipses. delta determines how many numbers around
+// the current should be displayed, with ellipses after, then the first
+// and last page. 2 is a comfortable number, balancing minimal crowding
+// with enough navigation and maintaining a good size across different
+// screens.
+function createPagination(c: number, m: number) &#123;
+  const current = c,
+    last = m,
+    delta = 2,
+    left = current - delta,
+    right = current + delta + 1,
+    range = [],
+    rangeWithDots = [];
+  let l;
+
+  for (let i = 1; i &lt;= last; i++) &#123;
+    if (i == 1 || i == last || (i &gt;= left && i &lt; right)) &#123;
+      range.push(i);
+    &#125;
+  &#125;
+
+  for (const i of range) &#123;
+    if (l) &#123;
+      if (i - l === 2) &#123;
+        rangeWithDots.push(l + 1);
+      &#125; else if (i - l !== 1) &#123;
+        rangeWithDots.push("...");
+      &#125;
+    &#125;
+    rangeWithDots.push(i);
+    l = i;
+  &#125;
+
+  return rangeWithDots;
+&#125;
+
+function Paginator(props: React.ComponentProps&lt;"nav"&gt;) &#123;
+  const &#123; pages, page, itemsPerPage, addSearchParam, fetchingLogs &#125; =
+    useLogsContext();
+
+  // prevent a UI flash by using a skeleton state
+  if (fetchingLogs) &#123;
+    return (
+      &lt;div className="flex justify-center gap-4 w-full"&gt;
+        &lt;Skeleton className="w-[100px] h-8" /&gt;
+        &#123;Array.from(&#123; length: 5 &#125;).map((_, index) =&gt; (
+          &lt;Skeleton key=&#123;index&#125; className="size-8" /&gt;
+        ))&#125;
+        &lt;Skeleton className="w-[100px] h-8" /&gt;
+        &lt;Skeleton className="w-[100px] h-8" /&gt;
+      &lt;/div&gt;
+    );
+  &#125;
+
+  // there's no need for pagination without any pages
+  if (!page || !pages || pages === 0) &#123;
+    return null;
+  &#125;
+
+  const pagination = createPagination(page, pages);
+  // we only want to navigate users if there's a page to go to
+  const previousPage = (page &gt; 1 ? page - 1 : page).toString();
+  const nextPage = (page &lt; 5 ? page + 1 : page).toString();
+
+  return (
+    &lt;Pagination &#123;...props&#125;&gt;
+      &lt;PaginationContent className="justify-between"&gt;
+        &lt;PaginationItem&gt;
+          &lt;PaginationPrevious
+            aria-disabled=&#123;page &lt; 1&#125;
+            onClick=&#123;() =&gt; addSearchParam("page", previousPage)&#125;
+          /&gt;
+        &lt;/PaginationItem&gt;
+        &lt;div className="order-first flex flex-row flex-wrap items-center justify-center gap-1 md:order-none md:min-w-0"&gt;
+          &#123;pagination.map((item, index) =&gt; (
+            &lt;PaginationItem key=&#123;`pagination-$&#123;index&#125;`&#125;&gt;
+              &#123;/* this is why createPagination returns strings and page numbers */&#125;
+              &#123;item === "..." ? (
+                &lt;PaginationEllipsis /&gt;
+              ) : (
+                &lt;PaginationLink
+                  isActive=&#123;page === Number(item)&#125;
+                  onClick=&#123;() =&gt; addSearchParam("page", item.toString())&#125;
+                &gt;
+                  &#123;item&#125;
+                &lt;/PaginationLink&gt;
+              )&#125;
+            &lt;/PaginationItem&gt;
+          ))&#125;
+        &lt;/div&gt;
+        &lt;PaginationItem&gt;
+          &lt;PaginationNext onClick=&#123;() =&gt; addSearchParam("page", nextPage)&#125; /&gt;
+        &lt;/PaginationItem&gt;
+        &lt;PaginationItem&gt;
+          &lt;Select
+            value=&#123;itemsPerPage.toString()&#125;
+            onValueChange=&#123;(value) =&gt; addSearchParam("items", value)&#125;
+          &gt;
+            &lt;SelectTrigger&gt;
+              &lt;SelectValue placeholder="Items" /&gt;
+            &lt;/SelectTrigger&gt;
+            &lt;SelectContent&gt;
+              &lt;SelectItem value="5"&gt;5&lt;/SelectItem&gt;
+              &lt;SelectItem value="10"&gt;10&lt;/SelectItem&gt;
+              &lt;SelectItem value="20"&gt;20&lt;/SelectItem&gt;
+              &lt;SelectItem value="25"&gt;25&lt;/SelectItem&gt;
+              &lt;SelectItem value="50"&gt;50&lt;/SelectItem&gt;
+              &lt;SelectItem value="100"&gt;100&lt;/SelectItem&gt;
+            &lt;/SelectContent&gt;
+          &lt;/Select&gt;
+        &lt;/PaginationItem&gt;
+      &lt;/PaginationContent&gt;
+    &lt;/Pagination&gt;
+  );
+&#125;
+
+// put it all together
+export function LogsDataTable() &#123;
+  return (
+    &lt;LogsContextProvider&gt;
+      &lt;Card className="max-w-xs w-full sm:max-w-none"&gt;
+        &lt;CardHeader&gt;
+          &lt;CardTitle&gt;
+            &lt;h1&gt;Front-End Sample&lt;/h1&gt;
+          &lt;/CardTitle&gt;
+          &lt;CardDescription&gt;
+            A simple sample to show my front-end capabilities. Feel free to
+            filter, sort, and test different states.
+          &lt;/CardDescription&gt;
+        &lt;/CardHeader&gt;
+        &lt;Separator orientation="horizontal" /&gt;
+        &lt;CardContent className="h-full flex flex-col gap-6 justify-between relative"&gt;
+          &lt;div className="space-y-4"&gt;
+            &lt;div className="flex gap-8 justify-between"&gt;
+              &lt;FiltersChips /&gt;
+              &lt;div className="flex gap-4 items-center"&gt;
+                &lt;DataStateSelect /&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;LogsTable /&gt;
+          &lt;/div&gt;
+        &lt;/CardContent&gt;
+        &lt;Separator orientation="horizontal" /&gt;
+        &lt;CardFooter&gt;
+          &lt;Paginator /&gt;
+        &lt;/CardFooter&gt;
+      &lt;/Card&gt;
+    &lt;/LogsContextProvider&gt;
+  );
+&#125;
+          </code>
+        </pre>
+      </section>
+      <section id="backend">
+        <h2>Back End</h2>
+        <pre>
+          <code class="language-javascript">
+const express = require("express");
+const app = express();
+const port = 3000;
+
+// TODO
+// this should scale reasonably well for in memory.
+// performance could be improved with a Set or a Map
+// but would tradeoff simplicity by requiring unique keys.
+// privacy would require a database to check against for
+// opt-outs. similarly, abuse would require a database
+// and external API to track IPs that are known abusers
+
+const emailOpensStore = [];
+
+// construct errors and add information to the store
+function storeEmailOpen(values) {
+  const errors = constructEmailOpenErrors(values);
+
+  emailOpensStore.push({
+    ...values,
+    errors,
+  });
+
+  return errors;
+}
+
+// currently just returns the array but could be extended
+// to filter, paginate, etc
+function readEmailOpens() {
+  return emailOpensStore;
+}
+
+// check for variables coming from the request that could
+// be undefined. could be extended in the future to check
+// for additional variables, verify IDs exist, etc
+function constructEmailOpenErrors(values) {
+  const { campaignId, userId, timestamp, userAgent, userIp } = values;
+
+  if (campaignId && userId && timestamp && userAgent && userIp) {
+    return undefined;
+  }
+
+  let errors = {};
+
+  if (!campaignId) errors.campaignId = "Campaign ID is missing";
+  if (!userId) errors.userId = "User ID is missing";
+  if (!timestamp) errors.timestamp = "Timestamp is missing";
+  if (!userAgent) errors.userAgent = "User agent is missing";
+  if (!userIp) errors.userIp = "User IP is missing";
+
+  return errors;
+}
+
+// put all of the write logic together.
+// we're writing all events here, even if they
+// should throw an error since it's best to track all
+// events
+function handleEmailOpened(req) {
+  const { campaignId, userId } = req.query;
+  const timestamp = new Date();
+  const userAgent = req.get("user-agent");
+  const userIp = req.ip;
+
+  const values = { campaignId, userId, timestamp, userAgent, userIp };
+
+  const errors = storeEmailOpen(values);
+
+  console.log("Email opened:", JSON.stringify(values, null, 2));
+
+  return errors;
+}
+
+app.get("/open", (req, res) => {
+  const errors = handleEmailOpened(req);
+
+  if (errors) return res.status(400).send();
+  return res.send();
+});
+
+app.get("/opens", (req, res) => {
+  const opens = readEmailOpens();
+
+  console.log("Read email opens");
+
+  return res.json(opens);
+});
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`);
+});
+
+          </code>
+        </pre>
+      </section>
+      <section id="database">
+        <h2>Database</h2>
+        <pre>
+          <code class="language-sql">
+-- campaigns(id, name, owner_id)
+-- emails(id, campaign_id, recipient, opened_at, bounced)
+-- users(id, name)
+
+-- open rate / campagign, sorted by open rate
+SELECT
+  c.id AS campaign_id,
+  c.name AS campaign_name,
+  COUNT(e.id) AS total_emails,
+  COUNT(e.opened_at) AS opened_emails,
+  ROUND(COUNT(e.opened_at) * 100.0 / NULLIF(COUNT(e.id), 0), 2) AS open_rate_percentage
+FROM
+  campaigns c
+JOIN
+  emails e ON c.id = e.campaign_id
+WHERE
+  e.bounced = FALSE
+GROUP BY
+  c.id, c.name
+ORDER BY
+  open_rate_percentage DESC;
+
+-- top 5 users
+SELECT 
+    u.id AS user_id,
+    u.name,
+    COUNT(e.id) AS sent_emails
+FROM 
+    users u
+JOIN 
+    campaigns c ON c.owner_id = u.id
+JOIN 
+    emails e ON e.campaign_id = c.id
+GROUP BY 
+    u.id, u.name
+ORDER BY 
+    sent_emails DESC
+LIMIT 5;
+
+-- bounce rate / user
+SELECT 
+    u.id AS user_id,
+    u.name,
+    COUNT(*) AS total_emails,
+    SUM(CASE WHEN e.bounced THEN 1 ELSE 0 END) AS bounced_emails,
+    ROUND(SUM(CASE WHEN e.bounced THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS bounce_rate_percentage
+FROM 
+    users u
+JOIN 
+    campaigns c ON c.owner_id = u.id
+JOIN 
+    emails e ON e.campaign_id = c.id
+GROUP BY 
+    u.id, u.name
+ORDER BY 
+    bounce_rate_percentage DESC;
+          </code>
+        </pre>
+      </section>
+      <button style="position: fixed; bottom: 2rem; right: 2rem" onclick="topFunction()">
+        Scroll To Top
+      </button>
+    </main>
+    <script src="/scripts/prism.js"></script>
+  </body>
+</html>
